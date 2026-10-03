@@ -1,0 +1,965 @@
+/* ==========================================================================
+   Nova Aba — Glass Dock
+   Design: tokens reaproveitados da extensão WeTab (.glass-dock, .glass-card,
+   .search-box) + linguagem visual macOS moderna.
+   ========================================================================== */
+
+:root {
+  /* Tipografia macOS */
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  --text-strong: #1d1d1f;
+  --text-soft: rgba(29, 29, 31, 0.62);
+  --text-on-dark: #f5f5f7;
+  --text-on-dark-soft: rgba(245, 245, 247, 0.7);
+
+  --accent: #0a84ff;
+
+  --glass-border: rgba(255, 255, 255, 0.35);
+  --glass-bg: rgba(255, 255, 255, 0.55);
+  --glass-bg-dark: rgba(28, 28, 30, 0.55);
+  --glass-border-dark: rgba(255, 255, 255, 0.14);
+
+  /* Sombras sutis estilo macOS */
+  --shadow-card: 0 2px 12px 0 rgba(0, 0, 0, 0.15);
+  --shadow-dock: 0 0 12px 0 rgba(0, 0, 0, 0.25);
+  --shadow-search: 0 4px 24px -4px rgba(0, 0, 0, 0.12);
+  --shadow-modal: 0 24px 80px -12px rgba(0, 0, 0, 0.45);
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  background: linear-gradient(160deg, #5b7fa6, #2b3a55);
+}
+
+/* ---------- Wallpaper ---------- */
+#wallpaper {
+  position: fixed; inset: 0;
+  background-size: cover;
+  background-position: center;
+  transition: background-image 0.6s ease, opacity 0.6s ease;
+  z-index: 0;
+}
+#wallpaper-dim {
+  position: fixed; inset: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,0.18), rgba(0,0,0,0.34));
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  z-index: 1;
+  pointer-events: none;
+}
+body.theme-dark #wallpaper-dim { opacity: 1; }
+
+/* ---------- Hero: relógio (movível/redimensionável via Layout) ---------- */
+#hero {
+  position: absolute;
+  text-align: center;
+  z-index: 3; /* acima do canvas (2): nunca fica coberto nem bloqueado */
+  pointer-events: none; /* passa o clique fora do modo edição */
+  container-type: size;  /* fontes escalam com o tamanho redimensionado */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 18px;
+  outline: 2px dashed transparent;
+  transition: outline-color 0.2s ease;
+  /* fallback visual antes do JS aplicar a posição salva */
+  top: 9vh; left: 50%;
+  width: 560px; height: 152px;
+  margin-left: -280px;
+}
+body.editing #hero {
+  pointer-events: auto;
+  cursor: grab;
+  outline-color: rgba(255, 255, 255, 0.65);
+  animation: wiggle 0.45s ease-in-out infinite;
+}
+body.editing #hero:active { cursor: grabbing; }
+body.editing #hero.dragging { animation: none; outline-color: rgba(255,255,255,.8); z-index: 6; }
+.hero-clock {
+  font-size: clamp(28px, 62cqh, 240px); /* 62% da altura do container */
+  line-height: 1;
+  font-weight: 200;
+  letter-spacing: -0.03em;
+  color: var(--text-on-dark);
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.28);
+  font-variant-numeric: tabular-nums;
+}
+.hero-date {
+  margin-top: 1.5cqh;
+  font-size: clamp(11px, 11cqh, 40px);
+  font-weight: 400;
+  color: var(--text-on-dark-soft);
+  text-transform: capitalize;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.25);
+  white-space: nowrap;
+}
+
+/* ---------- Fontes do relógio (stacks de sistema, sem assets externos) ---- */
+#hero.hf-modern  .hero-clock { font-family: var(--font); font-weight: 200; }
+#hero.hf-thin    .hero-clock { font-family: var(--font); font-weight: 100; letter-spacing: 0.02em; }
+#hero.hf-serif   .hero-clock { font-family: Didot, "Bodoni MT", "Playfair Display", Georgia, "Times New Roman", serif; font-weight: 400; letter-spacing: -0.01em; }
+#hero.hf-mono    .hero-clock { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-weight: 300; letter-spacing: -0.02em; }
+#hero.hf-bold    .hero-clock { font-family: var(--font); font-weight: 700; letter-spacing: -0.04em; }
+#hero.hf-cond    .hero-clock { font-family: Bahnschrift, "DIN Alternate", "Franklin Gothic Medium", "Arial Narrow", Arial, sans-serif; font-weight: 400; font-stretch: condensed; letter-spacing: 0.01em; }
+
+/* Seletor de fontes no menu de configurações */
+.font-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.font-opt {
+  border: 1.5px solid rgba(127, 127, 127, 0.3);
+  background: rgba(127, 127, 127, 0.08);
+  border-radius: 12px;
+  padding: 10px 6px 7px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  color: inherit;
+  font: inherit;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s var(--ease-spring);
+}
+.font-opt:hover { transform: scale(1.03); background: rgba(127, 127, 127, 0.15); }
+.font-opt.selected { border-color: var(--accent); background: rgba(10, 132, 255, 0.12); }
+.font-opt .sample { font-size: 20px; line-height: 1; font-variant-numeric: tabular-nums; }
+.font-opt .fname { font-size: 11px; opacity: 0.6; }
+.font-opt.fs-modern  .sample { font-family: var(--font); font-weight: 200; }
+.font-opt.fs-thin    .sample { font-family: var(--font); font-weight: 100; }
+.font-opt.fs-serif   .sample { font-family: Didot, "Bodoni MT", "Playfair Display", Georgia, "Times New Roman", serif; }
+.font-opt.fs-mono    .sample { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-weight: 300; }
+.font-opt.fs-bold    .sample { font-family: var(--font); font-weight: 700; }
+.font-opt.fs-cond    .sample { font-family: Bahnschrift, "DIN Alternate", "Franklin Gothic Medium", "Arial Narrow", Arial, sans-serif; font-stretch: condensed; }
+
+/* ---------- Busca (glass search box — token WeTab .search-box) ---------- */
+#search-section {
+  position: absolute; /* posição/tamanho controlados via Layout */
+  z-index: 3;
+}
+body.editing #search-section { cursor: grab; }
+body.editing #search-section:active { cursor: grabbing; }
+#search-form { width: 100%; height: 100%; display: flex; }
+.glass-search {
+  width: 100%; height: 100%;
+  /* WeTab: blur(40px) + sombra suave */
+  -webkit-backdrop-filter: blur(40px) saturate(1.6);
+  backdrop-filter: blur(40px) saturate(1.6);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  box-shadow: var(--shadow-search);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px 6px 20px;
+  transition: box-shadow 0.25s var(--ease-out), transform 0.25s var(--ease-out),
+    background 0.25s ease;
+}
+.glass-search:focus-within {
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 8px 32px -6px rgba(0, 0, 0, 0.22);
+  transform: translateY(-1px);
+}
+body.theme-dark .glass-search {
+  background: var(--glass-bg-dark);
+  border-color: var(--glass-border-dark);
+}
+body.theme-dark .glass-search:focus-within {
+  background: rgba(38, 38, 42, 0.78);
+}
+#search-engine-icon {
+  display: flex;
+  color: var(--text-soft);
+  flex-shrink: 0;
+}
+body.theme-dark #search-engine-icon { color: var(--text-on-dark-soft); }
+#search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: var(--font);
+  font-size: 17px;
+  color: var(--text-strong);
+  padding: 10px 4px;
+  min-width: 0;
+}
+#search-input::placeholder { color: var(--text-soft); }
+body.theme-dark #search-input { color: var(--text-on-dark); }
+body.theme-dark #search-input::placeholder { color: var(--text-on-dark-soft); }
+#search-go {
+  border: none;
+  cursor: pointer;
+  border-radius: 50%;
+  width: 38px; height: 38px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--accent);
+  color: #fff;
+  transition: transform 0.2s var(--ease-spring), filter 0.2s ease;
+  flex-shrink: 0;
+}
+#search-go:hover { transform: scale(1.07); filter: brightness(1.08); }
+#search-go:active { transform: scale(0.96); }
+
+/* ---------- Canvas de widgets ---------- */
+/* O canvas cobre a tela toda, mas NÃO pode interceptar eventos fora dos
+   widgets/atalhos — caso contrário ele engole o pointerdown do relógio
+   (canvas vem depois do #hero no DOM e empata em z-index, pintando por cima)
+   e bloquearia também seleção/scroll em áreas vazias. */
+#widget-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+#widget-canvas .widget,
+#widget-canvas .shortcut {
+  pointer-events: auto;
+}
+
+.widget {
+  position: absolute;
+  min-width: 180px;
+  border-radius: 18px;
+  padding: 14px 16px;
+  color: var(--text-strong);
+  cursor: default;
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow 0.25s var(--ease-out), outline-color 0.2s ease;
+  outline: 2px dashed transparent;
+}
+.widget.dragging, #search-section.dragging, .shortcut.dragging {
+  outline-color: rgba(255, 255, 255, 0.8) !important;
+  z-index: 6;
+}
+body.editing .widget {
+  cursor: grab;
+  outline-color: rgba(255, 255, 255, 0.65);
+  animation: wiggle 0.45s ease-in-out infinite;
+}
+body.editing .widget:active { cursor: grabbing; }
+@keyframes wiggle {
+  0%, 100% { transform: rotate(-0.6deg); }
+  50% { transform: rotate(0.6deg); }
+}
+
+/* Glass card — token WeTab .glass-card */
+.glass-card-widget {
+  -webkit-backdrop-filter: blur(40px) saturate(1.5);
+  backdrop-filter: blur(40px) saturate(1.5);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-card);
+}
+body.theme-dark .glass-card-widget {
+  background: var(--glass-bg-dark);
+  border-color: var(--glass-border-dark);
+  color: var(--text-on-dark);
+}
+
+.widget h4 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+
+/* To-do */
+.todo-input {
+  width: 100%;
+  border: none; outline: none;
+  background: transparent;
+  border-bottom: 1px solid rgba(127, 127, 127, 0.3);
+  font-family: var(--font);
+  font-size: 14px;
+  padding: 4px 2px 6px;
+  margin-bottom: 8px;
+  color: inherit;
+}
+.todo-list { list-style: none; margin: 0; padding: 0; flex: 1; min-height: 0; overflow-y: auto; }
+.todo-list li {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 14px; padding: 5px 0;
+}
+.todo-list li .tick {
+  width: 17px; height: 17px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(127, 127, 127, 0.55);
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.todo-list li.done .tick { background: var(--accent); border-color: var(--accent); }
+.todo-list li.done .tick::after {
+  content: "";
+  width: 8px; height: 5px;
+  border-left: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+  transform: rotate(-45deg) translateY(-1px);
+}
+.todo-list li.done span {
+  text-decoration: line-through;
+  opacity: 0.5;
+}
+.todo-list li .del {
+  margin-left: auto;
+  border: none; background: none; cursor: pointer;
+  color: inherit; opacity: 0; font-size: 15px; line-height: 1;
+  transition: opacity 0.15s ease;
+}
+.todo-list li:hover .del { opacity: 0.55; }
+.todo-edit {
+  flex: 1; min-width: 0;
+  border: none; outline: none;
+  background: transparent;
+  border-bottom: 1px solid var(--accent);
+  font: inherit; color: inherit;
+  padding: 0;
+}
+
+/* Notas */
+.notes-area {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  border: none; outline: none; resize: none;
+  background: transparent;
+  font-family: var(--font);
+  font-size: 14px; line-height: 1.5;
+  color: inherit;
+}
+
+/* Hábitos */
+.habit-row { display: flex; align-items: center; gap: 10px; padding: 5px 0; font-size: 14px; }
+.habit-dice { display: flex; gap: 4px; margin-left: auto; }
+.habit-dice button {
+  width: 16px; height: 16px;
+  border-radius: 4px;
+  border: 1.5px solid rgba(127, 127, 127, 0.5);
+  background: transparent; cursor: pointer; padding: 0;
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+.habit-dice button:hover { transform: scale(1.2); }
+.habit-dice button.on { background: var(--accent); border-color: var(--accent); }
+.habit-add { border: none; background: none; color: inherit; opacity: 0.6; cursor: pointer; font: inherit; font-size: 13px; padding: 6px 0 0; }
+.habit-add:hover { opacity: 1; }
+.habit-row .del { border:none; background:none; color:inherit; cursor:pointer; opacity:0; font-size:15px; }
+.habit-row:hover .del { opacity:0.55; }
+
+/* Calendário — escala com o tamanho do widget (cqi = % da largura do card) */
+.widget { container-type: inline-size; }
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  font-size: clamp(9px, 5cqi, 16px);
+  text-align: center;
+  flex: 1;
+  align-content: start;
+}
+.cal-grid .dow { font-size: 0.78em; opacity: 0.5; font-weight: 600; }
+.cal-grid .day {
+  padding: 0.28em 0;
+  border-radius: 8px;
+  font-variant-numeric: tabular-nums;
+}
+.cal-grid .day.today {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+.cal-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 6px;
+  font-size: clamp(11px, 5.5cqi, 16px);
+  font-weight: 600;
+}
+.cal-header button { border: none; background: none; color: inherit; cursor: pointer; font-size: 15px; padding: 2px 6px; border-radius: 6px; }
+.cal-header button:hover { background: rgba(127, 127, 127, 0.18); }
+
+/* ---------- Dock (token WeTab .glass-dock) ---------- */
+#dock-wrap {
+  position: fixed;
+  z-index: 10;
+  scrollbar-width: none; /* esconde a barra, mantém a rolagem (Firefox) */
+}
+#dock-wrap::-webkit-scrollbar { display: none; }
+
+/* Posição INFERIOR (padrão): horizontal, centralizada embaixo */
+body.dock-bottom #dock-wrap {
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  max-width: 96vw;
+  overflow-x: auto; /* muitos itens: rola em vez de sair da tela */
+}
+/* Posição ESQUERDA: vertical, centralizada na lateral esquerda */
+body.dock-left #dock-wrap {
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  max-height: calc(100vh - 28px);
+  overflow-y: auto; /* ícones crescem para dentro do padding-right do wrap */
+  overflow-x: hidden;
+}
+/* Posição DIREITA: vertical, centralizada na lateral direita */
+body.dock-right #dock-wrap {
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  max-height: calc(100vh - 28px);
+  overflow-y: auto; /* ícones crescem para dentro do padding-left do wrap */
+  overflow-x: hidden;
+}
+/* Orientação vertical da dock lateral: ícones empilhados */
+body.dock-left .glass-dock,
+body.dock-right .glass-dock {
+  flex-direction: column;
+  align-items: center;
+}
+/* Eixo de crescimento da magnificação: para dentro da tela */
+body.dock-left .dock-item { transform-origin: left center; }
+body.dock-right .dock-item { transform-origin: right center; }
+.glass-dock {
+  /* WeTab: blur(20px), radius 24px, border 1px, shadow 0 0 12px #0004 */
+  -webkit-backdrop-filter: blur(20px) saturate(1.8);
+  backdrop-filter: blur(20px) saturate(1.8);
+  background: rgba(255, 255, 255, 0.38);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 24px;
+  box-shadow: var(--shadow-dock);
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 10px 14px;
+}
+body.theme-dark .glass-dock {
+  background: rgba(20, 20, 24, 0.5);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+.dock-item {
+  position: relative;
+  width: 52px; height: 52px;
+  border-radius: 15px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transform-origin: bottom center;
+  will-change: transform;
+  touch-action: none; /* arraste vertical (spawn) também é customizado */
+  border: none;
+  padding: 0;
+  background: transparent;
+}
+.dock-item .icon {
+  width: 100%; height: 100%;
+  border-radius: 15px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px; font-weight: 600;
+  color: #fff;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
+  background-size: cover;
+  background-position: center;
+}
+.dock-item .icon img { width: 62%; height: 62%; object-fit: contain; }
+/* Reflexo sutil estilo macOS */
+.dock-item .icon::after {
+  content: "";
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255,255,255,0.28), transparent 42%);
+  pointer-events: none;
+}
+/* Sem tooltips na dock: o elemento .tooltip não é mais criado pelo JS.
+   O nome do app continua salvo e editável no modal — apenas não é exibido no hover. */
+.dock-add {
+  width: 52px; height: 52px;
+  border-radius: 15px;
+  border: 1.5px dashed rgba(255, 255, 255, 0.55);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 26px;
+  cursor: pointer;
+  display: none;
+  align-items: center; justify-content: center;
+  transition: transform 0.2s var(--ease-spring);
+}
+.dock-add:hover { transform: scale(1.08); }
+body.editing .dock-add { display: flex; }
+/* wiggle aplicado ao .icon para não conflitar com o transform: scale() da
+   magnificação, que fica no .dock-item */
+body.editing .dock-item .icon { animation: wiggle 0.45s ease-in-out infinite; }
+
+/* ---------- Seletor de posição da dock (configurações) ---------- */
+.dock-pos-row { gap: 10px; flex-wrap: wrap; }
+.dock-pos-opt {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 12px;
+  border: 1.5px solid rgba(127, 127, 127, 0.35);
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 13.5px;
+  transition: border-color 0.15s, background 0.15s;
+}
+.dock-pos-opt:has(input:checked) {
+  border-color: var(--accent, #0a84ff);
+  background: rgba(10, 132, 255, 0.12);
+  font-weight: 600;
+}
+
+/* ---------- Toolbar de canto ---------- */
+#corner-toolbar {
+  position: fixed;
+  right: 18px; bottom: 18px;
+  display: flex; gap: 8px;
+  z-index: 20;
+}
+.corner-btn {
+  width: 40px; height: 40px;
+  border-radius: 12px;
+  border: 1px solid var(--glass-border);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  background: rgba(255, 255, 255, 0.4);
+  color: var(--text-strong);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: transform 0.2s var(--ease-spring), background 0.2s ease;
+}
+.corner-btn:hover { transform: scale(1.08) rotate(-4deg); background: rgba(255,255,255,0.6); }
+.corner-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+body.theme-dark .corner-btn { background: rgba(30,30,34,0.5); color: var(--text-on-dark); border-color: var(--glass-border-dark); }
+body.theme-dark .corner-btn.active { background: var(--accent); color:#fff; }
+
+/* ---------- Modais ---------- */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0, 0, 0, 0.32);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100;
+  opacity: 1;
+  transition: opacity 0.2s ease;
+}
+.modal-overlay.hidden { opacity: 0; pointer-events: none; }
+.glass-card-modal {
+  /* WeTab .glass-card: blur(40px), radius 12→ aqui 20px p/ modal */
+  -webkit-backdrop-filter: blur(40px) saturate(1.6);
+  backdrop-filter: blur(40px) saturate(1.6);
+  background: rgba(245, 245, 247, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 20px;
+  box-shadow: var(--shadow-modal);
+  padding: 24px;
+  width: min(440px, 92vw);
+  max-height: 84vh;
+  overflow-y: auto;
+  color: var(--text-strong);
+  transform: scale(1);
+  transition: transform 0.22s var(--ease-spring);
+}
+.modal-overlay.hidden .glass-card-modal { transform: scale(0.94); }
+body.theme-dark .glass-card-modal {
+  background: rgba(30, 30, 34, 0.9);
+  border-color: var(--glass-border-dark);
+  color: var(--text-on-dark);
+}
+.modal h2 { margin: 0 0 18px; font-size: 19px; font-weight: 600; }
+.modal h3 {
+  margin: 22px 0 10px;
+  font-size: 12px;
+  font-weight: 700;
+  opacity: 0.55;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(127, 127, 127, 0.2);
+}
+.modal label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 12px; }
+/* Modal de configurações: compacto, hierarquia clara, responsivo */
+.modal.settings { width: min(560px, 94vw); padding: 22px; }
+.modal.settings .modal-actions { margin-top: 22px; }
+.modal input[type="text"], .modal select {
+  width: 100%;
+  margin-top: 5px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(127, 127, 127, 0.35);
+  background: rgba(255, 255, 255, 0.6);
+  font: inherit;
+  font-size: 14px;
+  color: inherit;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+body.theme-dark .modal input[type="text"], body.theme-dark .modal select {
+  background: rgba(255, 255, 255, 0.08);
+}
+.modal input:focus, .modal select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.25);
+}
+.modal .row { display: flex; gap: 10px; }
+.modal-actions { display: flex; gap: 8px; margin-top: 18px; align-items: center; }
+.flex-spacer { flex: 1; }
+.btn {
+  border: none;
+  border-radius: 10px;
+  padding: 8px 16px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  background: rgba(127, 127, 127, 0.16);
+  color: inherit;
+  transition: transform 0.15s var(--ease-spring), filter 0.15s ease;
+}
+.btn:hover { transform: scale(1.04); }
+.btn:active { transform: scale(0.97); }
+.btn.primary { background: var(--accent); color: #fff; }
+.btn.primary:hover { filter: brightness(1.1); }
+.btn.danger { background: #ff453a; color: #fff; }
+
+/* Grid de wallpapers */
+#wallpaper-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.wp-thumb {
+  aspect-ratio: 16/10;
+  border-radius: 10px;
+  background-size: cover;
+  background-position: center;
+  cursor: pointer;
+  border: 2.5px solid transparent;
+  transition: transform 0.18s var(--ease-out), border-color 0.18s ease;
+  position: relative;
+}
+.wp-thumb:hover { transform: scale(1.05); }
+.wp-thumb.selected { border-color: var(--accent); }
+.wp-thumb.custom { display:flex; align-items:center; justify-content:center; font-size: 22px; background: rgba(127,127,127,0.18); color: inherit; }
+
+/* Toggles de widgets — painel em cards com switches */
+.settings-hint { font-size: 12.5px; opacity: 0.55; margin: -2px 0 10px; line-height: 1.4; }
+.widget-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.wt-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 12px;
+  background: rgba(127, 127, 127, 0.09);
+  border: 1px solid rgba(127, 127, 127, 0.14);
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s var(--ease-spring);
+}
+.wt-card:hover { background: rgba(127, 127, 127, 0.16); transform: scale(1.015); }
+.wt-icon {
+  width: 30px; height: 30px;
+  border-radius: 8px;
+  background: rgba(10, 132, 255, 0.14);
+  color: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+body.theme-dark .wt-icon { background: rgba(10, 132, 255, 0.22); }
+.wt-info { flex: 1; min-width: 0; }
+.wt-name { font-size: 13.5px; font-weight: 600; }
+.wt-desc { font-size: 11px; opacity: 0.55; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wt-switch {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 36px; height: 22px;
+  border-radius: 999px;
+  background: rgba(127, 127, 127, 0.4);
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.2s ease;
+  outline: none;
+  border: none;
+  margin: 0;
+}
+.wt-switch::after {
+  content: "";
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s var(--ease-out);
+}
+.wt-switch:checked { background: var(--accent); }
+.wt-switch:checked::after { transform: translateX(14px); }
+
+/* Scrollbar discreta */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: rgba(127,127,127,0.4); border-radius: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* ---------- Alça de resize (dentro do card, respeitando o padding) ---------- */
+.resize-handle {
+  position: absolute;
+  bottom: 5px;
+  right: 5px;
+  z-index: 5;
+  width: 12px;
+  height: 12px;
+  background: rgba(255,255,255,0.5);
+  border-radius: 3px;
+  cursor: se-resize;
+  opacity: 0;
+  pointer-events: none; /* invisível fora do modo edição não intercepta cliques */
+  transition: opacity 0.2s;
+}
+body.editing .resize-handle { opacity: 0.6; pointer-events: auto; }
+.resize-handle::before {
+  content: "";
+  position: absolute; inset: 2px;
+  border-right: 2px solid rgba(127, 127, 127, 0.7);
+  border-bottom: 2px solid rgba(127, 127, 127, 0.7);
+  border-radius: 1px;
+}
+.widget .resize-handle { background: transparent; }
+
+/* ---------- Ícones personalizados (dock + atalhos) ----------
+   Nota: precisa vencer a especificidade de ".dock-item .icon img"
+   (62% contain), por isso os seletores abaixo incluem o contexto. */
+.icon-img,
+.dock-item .icon img.icon-img,
+.shortcut .icon img.icon-img,
+.spawn-ghost .icon img.icon-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* crop sem distorção, tile inteiro arredondado */
+  border-radius: inherit;
+}
+.habit-body { flex: 1; min-height: 0; overflow-y: auto; }
+
+/* ---------- Dock: reordenação ---------- */
+body.editing .dock-item { cursor: grab; }
+.dock-item.reordering { opacity: 0.85; }
+.dock-item.reordering .icon { animation: none !important; }
+
+/* ---------- Fantasma ao arrastar app para a área principal ---------- */
+.spawn-ghost {
+  position: fixed;
+  width: 56px; height: 56px;
+  z-index: 999;
+  pointer-events: none;
+  opacity: 0.92;
+  filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.35));
+}
+.spawn-ghost .icon {
+  width: 100%; height: 100%;
+  border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px; font-weight: 600; color: #fff;
+  overflow: hidden;
+  background-size: cover; background-position: center;
+}
+
+/* ---------- Atalhos na área principal ---------- */
+.shortcut {
+  position: absolute;
+  width: 76px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  z-index: 2;
+  outline: 2px dashed transparent;
+  border-radius: 12px;
+  transition: outline-color 0.2s ease;
+}
+body.editing .shortcut { cursor: grab; outline-color: rgba(255, 255, 255, 0.65); }
+.shortcut .icon {
+  width: 60px; height: 60px;
+  border-radius: 15px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px; font-weight: 600; color: #fff;
+  overflow: hidden;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+  background-size: cover; background-position: center;
+  transition: transform 0.18s var(--ease-spring);
+}
+.shortcut:hover .icon { transform: scale(1.06); }
+.shortcut .icon img:not(.icon-img) { width: 62%; height: 62%; object-fit: contain; }
+.shortcut-label {
+  max-width: 88px;
+  font-size: 12px;
+  color: #fff;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.55);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.shortcut-remove {
+  position: absolute;
+  top: -7px; left: -7px;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(30, 30, 34, 0.85);
+  color: #fff;
+  font-size: 13px; line-height: 1;
+  cursor: pointer;
+  display: none;
+  align-items: center; justify-content: center;
+}
+body.editing .shortcut-remove { display: flex; }
+.shortcut-remove:hover { background: #ff453a; }
+
+/* ---------- Grid overlay (visível durante arraste/resize) ----------
+   Desliga o wiggle apenas do elemento em arraste: garante que o rect
+   salvo não inclua a rotação da animação (deriva de posição). */
+body.editing .widget.dragging { animation: none; }
+
+/* ---------- Modal: editor de ícone ---------- */
+.icon-editor {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+.icon-preview {
+  width: 56px; height: 56px;
+  border-radius: 14px;
+  background: rgba(127, 127, 127, 0.18);
+  border: 1px solid rgba(127, 127, 127, 0.3);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; font-weight: 600;
+  color: inherit;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.icon-preview img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+}
+.icon-editor-fields { flex: 1; }
+.icon-editor-fields label { margin-bottom: 8px; }
+
+/* ---------- Wallpaper por URL ---------- */
+.wall-url-row { margin-top: 10px; }
+.wall-url-row input { flex: 1; }
+.wall-url-row .btn { flex-shrink: 0; }
+
+/* ---------- Contagem regressiva ---------- */
+.countdown-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  cursor: pointer;
+}
+.countdown-days {
+  font-size: clamp(30px, 30cqi, 96px);
+  font-weight: 200;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+.countdown-label {
+  font-size: clamp(11px, 5.5cqi, 15px);
+  opacity: 0.62;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.countdown-edit {
+  position: absolute;
+  top: 6px; right: 8px;
+  border: none; background: none;
+  color: inherit; opacity: 0.4;
+  cursor: pointer; font-size: 13px;
+  padding: 2px 5px;
+  border-radius: 6px;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+.countdown-edit:hover { opacity: 0.9; background: rgba(127,127,127,0.15); }
+
+/* ---------- Progresso (dia/mês/ano) ---------- */
+.daybar-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: clamp(4px, 2.5cqi, 10px);
+}
+.daybar-row { display: flex; align-items: center; gap: 8px; font-size: clamp(10px, 4.6cqi, 13px); }
+.daybar-row .lbl { width: 3.1em; opacity: 0.6; flex-shrink: 0; }
+.daybar-track {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(127, 127, 127, 0.22);
+  overflow: hidden;
+}
+.daybar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  transition: width 0.6s var(--ease-out);
+}
+.daybar-row .pct {
+  width: 3.4em;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+/* ---------- Alça de resize: área maior no modo edição ---------- */
+body.editing .resize-handle {
+  width: 20px;
+  height: 20px;
+  bottom: 3px;
+  right: 3px;
+  opacity: 0.85;
+}
+
+/* ---------- Responsividade ---------- */
+@media (max-width: 720px) {
+  .modal.settings { padding: 18px; }
+  .widget-panel { grid-template-columns: 1fr; }
+  .font-row { grid-template-columns: repeat(2, 1fr); }
+  #wallpaper-grid { grid-template-columns: repeat(2, 1fr); }
+  #corner-toolbar { right: 12px; bottom: 12px; }
+}
+@media (max-height: 540px) {
+  .modal-overlay { align-items: flex-start; }
+  .glass-card-modal { max-height: calc(100vh - 24px); margin: 12px 0; }
+}
+@media (max-width: 480px) {
+  .glass-card-modal { width: calc(100vw - 20px); }
+  .font-row { grid-template-columns: 1fr 1fr; }
+}

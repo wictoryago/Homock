@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nova Aba</title>
+  <link rel="icon" href="assets/icons/64.png" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <!-- Wallpaper -->
+  <div id="wallpaper" aria-hidden="true"></div>
+  <div id="wallpaper-dim" aria-hidden="true"></div>
+
+  <!-- Relógio / saudação -->
+  <header id="hero">
+    <div id="clock" class="hero-clock">00:00</div>
+    <div id="date" class="hero-date"></div>
+  </header>
+
+  <!-- Busca -->
+  <section id="search-section">
+    <form id="search-form" autocomplete="off">
+      <div id="search-box" class="glass-search">
+        <span id="search-engine-icon" title="Motor: Brave">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </span>
+        <input id="search-input" type="text" placeholder="Pesquisar com Brave…" spellcheck="false" autofocus />
+        <button id="search-go" type="submit" aria-label="Pesquisar">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+    </form>
+  </section>
+
+  <!-- Área de widgets -->
+  <main id="widget-canvas"></main>
+
+  <!-- Dock -->
+  <nav id="dock-wrap" aria-label="Dock de atalhos">
+    <div id="dock" class="glass-dock"></div>
+  </nav>
+
+  <!-- Barra de controles -->
+  <div id="corner-toolbar">
+    <button id="btn-edit" class="corner-btn" title="Editar dock / mover widgets">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+    </button>
+    <button id="btn-settings" class="corner-btn" title="Configurações">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+    </button>
+  </div>
+
+  <!-- Modal: adicionar/editar atalho da dock -->
+  <div id="dock-modal" class="modal-overlay hidden">
+    <div class="modal glass-card-modal">
+      <h2 id="dock-modal-title">Adicionar atalho</h2>
+      <label>Nome
+        <input id="dock-name" type="text" placeholder="Ex.: YouTube" maxlength="24" />
+      </label>
+      <label>URL
+        <input id="dock-url" type="text" placeholder="https://…" spellcheck="false" />
+      </label>
+      <div class="icon-editor">
+        <div id="dock-icon-preview" class="icon-preview">?</div>
+        <div class="icon-editor-fields">
+          <label>Ícone por URL
+            <input id="dock-icon-url" type="text" placeholder="https://site.com/icon.png" spellcheck="false" />
+          </label>
+          <button id="dock-icon-file" class="btn" type="button">Escolher arquivo…</button>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button id="dock-delete" class="btn danger hidden">Excluir</button>
+        <span class="flex-spacer"></span>
+        <button id="dock-cancel" class="btn">Cancelar</button>
+        <button id="dock-save" class="btn primary">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: configurações -->
+  <div id="settings-modal" class="modal-overlay hidden">
+    <div class="modal glass-card-modal settings">
+      <h2>Configurações</h2>
+
+      <h3>Plano de fundo</h3>
+      <div id="wallpaper-grid"></div>
+      <div class="row wall-url-row">
+        <input id="wallpaper-url" type="text" placeholder="URL de imagem da internet…" spellcheck="false" />
+        <button id="wallpaper-url-apply" class="btn" type="button">Aplicar</button>
+      </div>
+
+      <h3>Tema</h3>
+      <div class="row">
+        <select id="theme-select">
+          <option value="auto">Automático</option>
+          <option value="light">Claro</option>
+          <option value="dark">Escuro</option>
+        </select>
+      </div>
+
+      <h3>Fonte do relógio</h3>
+      <div id="clock-font-row" class="font-row"></div>
+
+      <h3>Posição da dock</h3>
+      <div id="dock-pos-row" class="row dock-pos-row">
+        <label class="dock-pos-opt">
+          <input type="radio" name="dock-pos" value="bottom" /> Inferior
+        </label>
+        <label class="dock-pos-opt">
+          <input type="radio" name="dock-pos" value="left" /> Esquerda
+        </label>
+        <label class="dock-pos-opt">
+          <input type="radio" name="dock-pos" value="right" /> Direita
+        </label>
+      </div>
+
+      <h3>Widgets</h3>
+      <p class="settings-hint">Ative/desative os componentes da nova aba. Use o botão ✎ no canto inferior para movê-los e redimensioná-los.</p>
+      <div id="widget-toggles" class="widget-panel"></div>
+
+      <div class="modal-actions">
+        <span class="flex-spacer"></span>
+        <button id="settings-close" class="btn primary">Concluir</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/layout.js"></script>
+  <script src="js/dock.js"></script>
+  <script src="js/widgets.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

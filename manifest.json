@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "Nova Aba — Glass Dock",
+  "description": "Nova aba elegante estilo macOS: busca via Brave, dock com magnificação, widgets locais e wallpapers. Tudo salvo localmente.",
+  "version": "1.0.0",
+  "chrome_url_overrides": {
+    "newtab": "newtab.html"
+  },
+  "icons": {
+    "32": "assets/icons/32.png",
+    "64": "assets/icons/64.png",
+    "128": "assets/icons/128.png"
+  },
+  "permissions": ["storage", "favicon"]
+}
