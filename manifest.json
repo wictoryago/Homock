@@ -11,5 +11,8 @@
     "64": "assets/icons/64.png",
     "128": "assets/icons/128.png"
   },
-  "permissions": ["storage", "favicon"]
+  "permissions": ["storage", "favicon"],
+  "host_permissions": [
+    "https://suggestqueries.google.com/*"
+  ]
 }

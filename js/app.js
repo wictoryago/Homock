@@ -832,3 +832,173 @@
   }
   init();
 })();
+
+/* ==========================================================================
+   Autocomplete & Google Lens (Drag and Drop)
+   ========================================================================== */
+(() => {
+  const form = document.getElementById("search-form");
+  const input = document.getElementById("search-input");
+  const searchBox = document.getElementById("search-box"); // Referência à caixa visual
+  
+  // Container de sugestões
+  const suggContainer = document.createElement("div");
+  suggContainer.id = "search-suggestions";
+  suggContainer.className = "hidden";
+  form.appendChild(suggContainer);
+
+  let debounceTimer;
+  let currentFocus = -1;
+  let originalQuery = "";
+
+  // 1. Calcula o espaço para as Sugestões dinamicamente
+  function updateSuggestionsLayout() {
+    if (suggContainer.classList.contains("hidden")) return;
+    
+    const formRect = form.getBoundingClientRect();
+    const wrap = document.getElementById("dock-wrap");
+    const dockRect = wrap.getBoundingClientRect();
+    const isDockBottom = document.body.classList.contains("dock-bottom");
+
+    // Espaço padrão: barra de pesquisa até o fim da tela
+    let availableHeight = window.innerHeight - formRect.bottom - 24; 
+    
+    // Se a dock estiver na base e acima do limite inferior da tela, respeita a dock
+    if (isDockBottom && dockRect.top > formRect.bottom) {
+      availableHeight = dockRect.top - formRect.bottom - 16;
+    }
+
+    // Altura mínima segura para evitar que o menu desapareça se a janela for muito baixa
+    if (availableHeight < 110) availableHeight = 110;
+
+    suggContainer.style.maxHeight = availableHeight + "px";
+    suggContainer.style.overflowY = "auto";
+  }
+
+  // Recalcula se a janela ou a interface mudar de tamanho
+  window.addEventListener("resize", updateSuggestionsLayout);
+
+  async function fetchSuggestions(query) {
+    try {
+      const res = await fetch(`https://suggestqueries.google.com/complete/search?client=firefox&q=${encodeURIComponent(query)}`);
+      const data = await res.json();
+      return data[1] || [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function closeSuggestions() {
+    suggContainer.classList.add("hidden");
+    currentFocus = -1;
+  }
+
+  function renderSuggestions(suggestions) {
+    suggContainer.innerHTML = "";
+    if (suggestions.length === 0) {
+      closeSuggestions();
+      return;
+    }
+
+    const iconSvg = `<span class="sugg-icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>`;
+
+    suggestions.forEach((sugg) => {
+      const div = document.createElement("div");
+      div.className = "sugg-item";
+      div.innerHTML = `${iconSvg}<span>${sugg}</span>`;
+      div.addEventListener("click", () => {
+        input.value = sugg;
+        closeSuggestions();
+        document.getElementById("search-go").click();
+      });
+      suggContainer.appendChild(div);
+    });
+    
+    suggContainer.classList.remove("hidden");
+    updateSuggestionsLayout(); // Ajusta a altura após renderizar os novos itens
+  }
+
+  input.addEventListener("input", (e) => {
+    const val = e.target.value.trim();
+    originalQuery = val;
+    clearTimeout(debounceTimer);
+    if (!val) { closeSuggestions(); return; }
+    debounceTimer = setTimeout(async () => {
+      renderSuggestions((await fetchSuggestions(val)).slice(0, 6));
+    }, 150);
+  });
+
+  input.addEventListener("keydown", (e) => {
+    const items = suggContainer.querySelectorAll(".sugg-item");
+    if (items.length === 0 || suggContainer.classList.contains("hidden")) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      currentFocus = (currentFocus + 1) % items.length;
+      setActive(items);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      currentFocus = currentFocus - 1 < 0 ? items.length - 1 : currentFocus - 1;
+      setActive(items);
+    } else if (e.key === "Escape") {
+      closeSuggestions();
+    }
+  });
+
+  function setActive(items) {
+    items.forEach(item => item.classList.remove("selected"));
+    if (currentFocus > -1 && currentFocus < items.length) {
+      items[currentFocus].classList.add("selected");
+      input.value = items[currentFocus].innerText.trim();
+    } else {
+      input.value = originalQuery;
+    }
+  }
+
+  document.addEventListener("click", (e) => {
+    if (!form.contains(e.target)) closeSuggestions();
+  });
+
+  // 2. Google Lens — Eventos de Arraste e Upload
+  searchBox.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    if (e.dataTransfer.types.includes("Files")) {
+      searchBox.classList.add("lens-drag-active");
+    }
+  });
+
+  searchBox.addEventListener("dragleave", (e) => {
+    e.preventDefault();
+    searchBox.classList.remove("lens-drag-active");
+  });
+
+  searchBox.addEventListener("drop", (e) => {
+    e.preventDefault();
+    searchBox.classList.remove("lens-drag-active");
+
+    const file = e.dataTransfer.files[0];
+    if (!file || !file.type.startsWith("image/")) return;
+
+    // Constrói um formulário fantasma em multipart/form-data (Padrão para envio de imagens web)
+    const lensForm = document.createElement("form");
+    lensForm.method = "POST";
+    lensForm.action = "https://lens.google.com/upload";
+    lensForm.enctype = "multipart/form-data";
+    lensForm.target = "_blank"; // Abre o resultado em uma nova guia
+
+    const fileInput = document.createElement("input");
+    fileInput.type = "file";
+    fileInput.name = "encoded_image"; // Endpoint do Lens exige este name
+
+    // Passa o arquivo do DataTransfer do Drag&Drop para o Input file
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    fileInput.files = dt.files;
+
+    lensForm.appendChild(fileInput);
+    document.body.appendChild(lensForm);
+    lensForm.submit();
+    
+    // Remove o formulário após enviar
+    setTimeout(() => lensForm.remove(), 1000);
+  });
+})();
